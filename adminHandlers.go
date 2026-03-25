@@ -12,6 +12,7 @@ type apiConfig struct {
 	fileserverHits atomic.Int32
 	dbQueries      *database.Queries
 	platform       string
+	jwtSecret      string
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -38,22 +39,18 @@ func (cfg *apiConfig) handlerMetrics(w http.ResponseWriter, r *http.Request) {
 
 func (cfg *apiConfig) handlerReset(w http.ResponseWriter, r *http.Request) {
 	if cfg.platform != "dev" {
-		respondWithError(w, 403, "Forbidden")
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte("Reset is only allowed in dev environment."))
 		return
 	}
+
 	cfg.fileserverHits.Store(0)
-
-	err := cfg.dbQueries.DeleteAllChirps(r.Context())
+	err := cfg.dbQueries.Reset(r.Context())
 	if err != nil {
-		respondWithError(w, 500, "could not delete all chirps")
-		return
-	}
-
-	err = cfg.dbQueries.DeleteAllUsers(r.Context())
-	if err != nil {
-		respondWithError(w, 500, "could not delete all users")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Failed to reset the database: " + err.Error()))
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-
+	w.Write([]byte("Hits reset to 0 and database reset to initial state."))
 }
