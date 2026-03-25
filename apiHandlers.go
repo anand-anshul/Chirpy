@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/anand-anshul/chirpy/internal/auth"
@@ -134,11 +135,37 @@ func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
 		Body      string    `json:"body"`
 		UserID    uuid.UUID `json:"user_id"`
 	}
-	chirpsSlice, err := cfg.dbQueries.GetChirps(r.Context())
+	authorIDStr := r.URL.Query().Get("author_id")
+
+	var chirpsSlice []database.Chirp
+	var err error
+
+	if authorIDStr != "" {
+		authorID, err := uuid.Parse(authorIDStr)
+		if err != nil {
+			respondWithError(w, 400, "invalid author_id")
+			return
+		}
+		chirpsSlice, err = cfg.dbQueries.GetChirpsByUser(r.Context(), authorID)
+	} else {
+		chirpsSlice, err = cfg.dbQueries.GetChirps(r.Context())
+	}
+
 	if err != nil {
 		respondWithError(w, 500, "could not get chirps")
 		return
 	}
+
+	sortParam := r.URL.Query().Get("sort")
+
+	sort.Slice(chirpsSlice, func(i, j int) bool {
+		if sortParam == "desc" {
+			return chirpsSlice[i].CreatedAt.After(chirpsSlice[j].CreatedAt)
+		}
+		// default: asc
+		return chirpsSlice[i].CreatedAt.Before(chirpsSlice[j].CreatedAt)
+	})
+
 	response := responseBody{}
 
 	for _, chirp := range chirpsSlice {
