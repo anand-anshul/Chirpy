@@ -10,9 +10,7 @@ import (
 )
 
 const reset = `-- name: Reset :exec
-DELETE FROM refresh_tokens
-DELETE FROM chirps;
-DELETE FROM users;
+DELETE FROM users
 `
 
 func (q *Queries) Reset(ctx context.Context) error {

@@ -21,6 +21,7 @@ func main() {
 	dbURL := os.Getenv("DB_URL")
 	curPlatform := os.Getenv("PLATFORM")
 	secret := os.Getenv("JWT_SECRET")
+	polka := os.Getenv("POLKA_KEY")
 	if secret == "" {
 		log.Fatal("JWT_SECRET is not set")
 	}
@@ -36,6 +37,7 @@ func main() {
 		dbQueries: database.New(db),
 		platform:  curPlatform,
 		jwtSecret: secret,
+		polkaKey:  polka,
 	}
 	fileServerHandler := http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot)))
 
@@ -52,6 +54,9 @@ func main() {
 	mux.HandleFunc("POST /api/login", apiCfg.handlerLoginUser)
 	mux.HandleFunc("POST /api/refresh", apiCfg.handlerRefresh)
 	mux.HandleFunc("POST /api/revoke", apiCfg.handlerRevoke)
+	mux.HandleFunc("PUT /api/users", apiCfg.handlerUpdateUser)
+	mux.HandleFunc("DELETE /api/chirps/{chirpID}", apiCfg.handlerDeleteChirp)
+	mux.HandleFunc("POST /api/polka/webhooks", apiCfg.handlerUpgradeUser)
 
 	srv := &http.Server{
 		Addr:    ":" + port,
